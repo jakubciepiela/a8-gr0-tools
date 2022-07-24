@@ -25,7 +25,11 @@ import scala.jdk.CollectionConverters.*
     else Some('X')
   }
 
-  def exportImage(img: BufferedImage, colorFunction: (Color)=>Option[Char] ):Unit={
+  def exportImage(
+                   img: BufferedImage,
+                   outputVarName: String,
+                   colorFunction:
+                   (Color)=>Option[Char] ):Unit={
     case class ColorStep( steps: Int, color: Option[Color], rgb: Int)
     case class AsciiStep( steps: Int, c: Option[Char])
 
@@ -37,22 +41,28 @@ import scala.jdk.CollectionConverters.*
       cp = ColorStep(steps = 1, color = if(rgb == 0) None else Some(new Color(rgb, true)), rgb = rgb)
     } yield cp
 
-    val asciiPoints = colorPoints.map( cp => AsciiStep(cp.steps, cp.color.flatMap( c => colorFunction(c) ) ) ).toList
+    val asciiPoints = colorPoints
+      .map( cp => AsciiStep(cp.steps, cp.color.flatMap( c => colorFunction(c) ) ) )
+      .toList
 
 
     var apt = asciiPoints
     while(apt.nonEmpty){
       val line = apt.take(img.getWidth)
-      println( line.map( ap => ap.c.getOrElse(' ') ).mkString(""))
+//      println( "; "+ line.map( ap => ap.c.getOrElse(' ') ).mkString(""))
 
       apt = apt.drop(img.getWidth)
     }
 
 //    println(s"w:${img.getWidth}, h:${img.getHeight}")
 //    println("Uncompressed: "+colorPoints.toList)
-    val lastPoint = asciiPoints.head
 
-    val allCompressed = asciiPoints.tail
+
+    val asciiPointsToProcess = asciiPoints.reverse
+
+    val lastPoint = asciiPointsToProcess.head
+
+    val allCompressed = asciiPointsToProcess.tail
       .foldLeft( List(lastPoint) )(
         (compressed, cp) => cp.c match {
           case Some(value) => compressed.prepended(cp)
@@ -64,13 +74,13 @@ import scala.jdk.CollectionConverters.*
 
         } ).toList
 
-    println(allCompressed)
+    //println(allCompressed)
     //first step can be translated into  x/y of the first point
 
     val head = allCompressed.head
     val y = head.steps / img.getWidth
     val x = head.steps % img.getWidth
-    println(s" first point at: $x,$y")
+    println(s"; first point at: $x,$y")
 
     val steps = allCompressed
       .tail
@@ -80,9 +90,9 @@ import scala.jdk.CollectionConverters.*
       .appendedAll(steps)
 
 
-    println(gr0Compressed.mkString(" "))
+//    println(gr0Compressed.mkString(" "))
 
-    print(" BYTE ARRAY img = [ ")
+    print(s" BYTE ARRAY $outputVarName = [ ")
     val entriesPerLine = 10
     var allPoints = gr0Compressed
     while(allPoints.nonEmpty){
@@ -106,10 +116,12 @@ import scala.jdk.CollectionConverters.*
 //    val imgMeta: PSDMetadata = ir.getImageMetadata(r).asInstanceOf[PSDMetadata]
 
     val imgPNames = imgBuff.getPropertyNames
-    println(s"ImgBuff $r : $imgBuff")
+//    println(s"; ImgBuff $r : $imgBuff")
 //    println(s"ImgMeta $r : $imgMeta")
-    println(s"streamMData $r : $streamMData")
-    exportImage(imgBuff, alphaShade)
+//    println(s"; streamMData $r : $streamMData")
+    var idx = r - 3;
+    var outputVarName = s"s$idx"
+    exportImage(imgBuff, outputVarName, alphaShade)
   }
 
   def showImgData(ir: ImageReader):Unit={
